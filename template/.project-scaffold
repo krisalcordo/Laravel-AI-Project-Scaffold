@@ -1,0 +1,21 @@
+# Project-owned settings used by the DDEV helpers and review playbooks.
+# Values must be shell-safe: do not add spaces around '='.
+
+PROJECT_SLUG="__PROJECT_SLUG__"
+
+# Fill this after the GitHub repository exists (example: owner/repository).
+PROJECT_REPOSITORY="OWNER/REPOSITORY"
+
+PREVIEW_HOST_PREFIX="__PROJECT_SLUG__-preview"
+PREVIEW_SLOT_COUNT=10
+PREVIEW_BASE_PORT=8200
+
+# The preview probe accepts any 2xx or 3xx response at this path.
+PREVIEW_HEALTH_PATH="/login"
+
+# A stable, fast PHPUnit class or method used only to verify worktree setup.
+SCAFFOLD_SMOKE_TEST_FILTER="ExampleTest"
+
+# Set to 1 only after ARCHITECTURE.md documents that preview uploads may write
+# to the main checkout's storage. Otherwise each worktree keeps its own storage.
+SHARE_PREVIEW_UPLOADS=0

@@ -1,0 +1,26 @@
+# Agent worktrees and operational checkpoints
+/.claude/worktrees/
+/.worktrees/
+/storage/app/agent-checkpoints/
+
+# Frontend build/runtime artifacts
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+
+# PHP/runtime artifacts
+/vendor/
+/.phpunit.cache/
+/.phpunit.result.cache
+
+# Local environment and IDE files
+/.env
+/.env.backup
+/.env.production
+/.codex/
+/.cursor/
+/.idea/
+/.vscode/
+.DS_Store
+

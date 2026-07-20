@@ -1,0 +1,55 @@
+name: PR Contract
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Collect trusted validation inputs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          php -r 'file_put_contents("/tmp/pr-body.md", getenv("PR_BODY") ?: "");'
+          git fetch origin "pull/${PR_NUMBER}/head:refs/remotes/origin/pr-contract-head"
+          git diff --name-only "$BASE_SHA...refs/remotes/origin/pr-contract-head" > /tmp/changed-files.txt
+          git worktree add --detach /tmp/pr-contract-head refs/remotes/origin/pr-contract-head
+          if git fetch origin pr-assets:refs/remotes/origin/pr-assets; then
+            git ls-tree -r --name-only origin/pr-assets > /tmp/pr-assets-files.txt
+          else
+            : > /tmp/pr-assets-files.txt
+          fi
+
+      - name: Enforce PR contract
+        run: >-
+          php tools/pr-contract/validate.php
+          --body-file=/tmp/pr-body.md
+          --changed-files=/tmp/changed-files.txt
+          --archive-files=/tmp/pr-assets-files.txt
+          --repo-root=/tmp/pr-contract-head
+
+      - name: Return a noncompliant PR to draft
+        if: failure() && github.event.pull_request.draft == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr ready --undo "$PR_URL"
+

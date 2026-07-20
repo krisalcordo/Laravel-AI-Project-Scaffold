@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+
+## Description: Serve worktrees on isolated preview hosts and cloned PostgreSQL databases
+## Usage: preview [status|stop [<worktree-name>|all]|start <worktree-name> [--fresh]]
+## Example: "ddev preview start feature-name --fresh"
+
+set -euo pipefail
+
+ROOT=/var/www/html
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=.ddev/lib/project-settings.sh
+source "$SCRIPT_DIR/../../lib/project-settings.sh"
+# shellcheck source=.ddev/lib/worktree-paths.sh
+source "$SCRIPT_DIR/../../lib/worktree-paths.sh"
+load_scaffold_settings "$ROOT"
+
+CONF=/mnt/ddev_config/config.preview.yaml
+[ -f "$CONF" ] || {
+    echo "config.preview.yaml is missing; run .ddev/generate-preview-slots.sh and ddev restart" >&2
+    exit 1
+}
+
+mapfile -t HOSTS < <(
+    awk '
+        $1 == "additional_hostnames:" { in_hosts = 1; next }
+        $1 == "web_extra_exposed_ports:" { in_hosts = 0 }
+        in_hosts && $1 == "-" { print $2 }
+    ' "$CONF"
+)
+mapfile -t PORTS < <(awk '$1 == "container_port:" { print $2 }' "$CONF")
+
+if [ "${#PORTS[@]}" -eq 0 ] || [ "${#HOSTS[@]}" -ne "${#PORTS[@]}" ]; then
+    echo "Generated preview configuration is malformed; regenerate it" >&2
+    exit 1
+fi
+
+url_for() {
+    printf 'http://%s.ddev.site:%s\n' "${HOSTS[$1]}" "${PORTS[$1]}"
+}
+
+database_prefix=${PROJECT_SLUG//-/_}
+clone_db_for() { printf '%s_preview_%s\n' "$database_prefix" "$1"; }
+owner_file_for() { printf '/tmp/%s-preview-%s.owner\n' "$database_prefix" "$1"; }
+
+env_value() {
+    local key="$1" value
+    value=$(grep -E "^${key}=" "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2- || true)
+    value=${value%\"}
+    value=${value#\"}
+    printf '%s\n' "$value"
+}
+
+DB_HOST=$(env_value DB_HOST)
+DB_PORT=$(env_value DB_PORT)
+DB_NAME=$(env_value DB_DATABASE)
+DB_USER=$(env_value DB_USERNAME)
+DB_PASSWORD=$(env_value DB_PASSWORD)
+
+DB_HOST=${DB_HOST:-db}
+DB_PORT=${DB_PORT:-5432}
+DB_NAME=${DB_NAME:-db}
+DB_USER=${DB_USER:-db}
+DB_PASSWORD=${DB_PASSWORD:-db}
+export PGPASSWORD="$DB_PASSWORD"
+
+sql() {
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -qtAc "$1"
+}
+
+clone_exists() { [ "$(sql "SELECT 1 FROM pg_database WHERE datname = '$1'")" = 1 ]; }
+
+list_clones() {
+    sql "SELECT datname FROM pg_database WHERE datname LIKE '${database_prefix}\\_preview\\_%' ORDER BY datname"
+}
+
+drop_clone() {
+    local database="$1"
+    if clone_exists "$database"; then
+        sql "DROP DATABASE \"$database\" WITH (FORCE)" >/dev/null
+        echo "Dropped preview database $database"
+    fi
+}
+
+make_clone() {
+    local database="$1"
+    drop_clone "$database"
+    echo "Cloning $DB_NAME to $database"
+    sql "CREATE DATABASE \"$database\"" >/dev/null
+    pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" --no-owner --no-acl "$DB_NAME" \
+        | psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$database" \
+            -q -v ON_ERROR_STOP=1 >/dev/null
+}
+
+serve_cwd() { readlink "/proc/$1/cwd" 2>/dev/null || true; }
+
+declare -A PID_BY_PORT=()
+scan_serves() {
+    PID_BY_PORT=()
+    local pid command port
+    while read -r pid command; do
+        port=${command##*--port=}
+        PID_BY_PORT[$port]=$pid
+    done < <(pgrep -af 'artisan serve --host=0\.0\.0\.0 --port=[0-9]+$' || true)
+}
+
+serve_pid() { printf '%s\n' "${PID_BY_PORT[$1]:-}"; }
+
+owner_for_port() {
+    local file
+    file=$(owner_file_for "$1")
+    [ -f "$file" ] && head -1 "$file" || true
+}
+
+set_owner_for_port() { printf '%s\n' "$2" > "$(owner_file_for "$1")"; }
+clear_owner_for_port() { rm -f "$(owner_file_for "$1")"; }
+
+reap_orphans() {
+    local port pid cwd
+    for port in "${!PID_BY_PORT[@]}"; do
+        pid=${PID_BY_PORT[$port]}
+        cwd=$(serve_cwd "$pid")
+        if [ -z "$cwd" ] || [ ! -d "$cwd" ]; then
+            kill "$pid" 2>/dev/null || true
+            unset "PID_BY_PORT[$port]"
+            drop_clone "$(clone_db_for "$port")"
+            clear_owner_for_port "$port"
+            echo "Reaped orphaned preview on port $port"
+        fi
+    done
+}
+
+slot_for_name() {
+    local name="$1" index port
+    for index in "${!PORTS[@]}"; do
+        port=${PORTS[$index]}
+        [ -n "$(serve_pid "$port")" ] || continue
+        [ "$(owner_for_port "$port")" = "$name" ] && { printf '%s\n' "$index"; return; }
+    done
+}
+
+free_slot() {
+    local index
+    for index in "${!PORTS[@]}"; do
+        [ -z "$(serve_pid "${PORTS[$index]}")" ] && { printf '%s\n' "$index"; return; }
+    done
+}
+
+print_status() {
+    local index port pid owner any= database
+    for index in "${!PORTS[@]}"; do
+        port=${PORTS[$index]}
+        pid=$(serve_pid "$port")
+        [ -n "$pid" ] || continue
+        any=1
+        owner=$(owner_for_port "$port")
+        echo "${owner:-unknown} (pid $pid) -> $(url_for "$index") (database: $(clone_db_for "$port"))"
+    done
+    [ -n "$any" ] || echo "No previews running (${#PORTS[@]} slots free)"
+
+    while read -r database; do
+        [ -n "$database" ] || continue
+        port=${database##*_preview_}
+        [ -n "$(serve_pid "$port")" ] || echo "Stale preview database: $database"
+    done < <(list_clones)
+}
+
+scan_serves
+
+case "${1:-status}" in
+    status)
+        reap_orphans
+        print_status
+        ;;
+
+    stop)
+        target=${2:-}
+        if [ "$target" = all ]; then
+            for port in "${!PID_BY_PORT[@]}"; do
+                kill "${PID_BY_PORT[$port]}" 2>/dev/null || true
+                clear_owner_for_port "$port"
+            done
+            while read -r database; do
+                [ -n "$database" ] && drop_clone "$database"
+            done < <(list_clones)
+            echo "Stopped all previews"
+        elif [ -n "$target" ]; then
+            slot=$(slot_for_name "$target")
+            [ -n "$slot" ] || { echo "No preview running for $target" >&2; exit 1; }
+            port=${PORTS[$slot]}
+            kill "$(serve_pid "$port")" 2>/dev/null || true
+            drop_clone "$(clone_db_for "$port")"
+            clear_owner_for_port "$port"
+            echo "Stopped preview for $target"
+        else
+            if [ "${#PID_BY_PORT[@]}" -ne 1 ]; then
+                echo "Use 'preview stop <name>' or 'preview stop all'" >&2
+                print_status >&2
+                exit 1
+            fi
+            for port in "${!PID_BY_PORT[@]}"; do
+                kill "${PID_BY_PORT[$port]}" 2>/dev/null || true
+                drop_clone "$(clone_db_for "$port")"
+                clear_owner_for_port "$port"
+            done
+        fi
+        ;;
+
+    start)
+        name=${2:?usage: ddev preview start <worktree-name> [--fresh]}
+        fresh=${3:-}
+        [ -z "$fresh" ] || [ "$fresh" = --fresh ] || { echo "Unknown option: $fresh" >&2; exit 2; }
+
+        dir=$(scaffold_worktree_dir "$ROOT" "$name")
+        cd "$dir"
+
+        [ ! -L vendor ] || { echo "vendor must not be a symlink" >&2; exit 1; }
+        [ -d public/build ] || { echo "public/build is missing; run 'ddev worktree-setup $name'" >&2; exit 1; }
+
+        reap_orphans
+        slot=$(slot_for_name "$name")
+
+        if [ -n "$slot" ] && [ "$fresh" != --fresh ]; then
+            echo "Preview already running: $(url_for "$slot")"
+            exit 0
+        fi
+
+        if [ -n "$slot" ]; then
+            port=${PORTS[$slot]}
+            kill "$(serve_pid "$port")" 2>/dev/null || true
+        else
+            slot=$(free_slot)
+            [ -n "$slot" ] || { echo "All preview slots are busy" >&2; print_status >&2; exit 1; }
+            port=${PORTS[$slot]}
+        fi
+
+        clone_db=$(clone_db_for "$port")
+        owner=$(owner_for_port "$port")
+
+        [ -f .env ] || cp "$ROOT/.env" .env
+        [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist
+        mkdir -p storage/framework/cache/data storage/framework/sessions \
+            storage/framework/views storage/logs bootstrap/cache
+
+        if [ "$fresh" = --fresh ] || ! clone_exists "$clone_db" || [ "$owner" != "$name" ]; then
+            make_clone "$clone_db"
+        else
+            echo "Reusing $clone_db; use --fresh to re-clone"
+        fi
+
+        if grep -qE '^DB_DATABASE=' .env; then
+            sed -i "s/^DB_DATABASE=.*/DB_DATABASE=\"$clone_db\"/" .env
+        else
+            echo "DB_DATABASE=\"$clone_db\"" >> .env
+        fi
+
+        app_url=$(url_for "$slot")
+        if grep -qE '^APP_URL=' .env; then
+            sed -i "s|^APP_URL=.*|APP_URL=\"$app_url\"|" .env
+        else
+            echo "APP_URL=\"$app_url\"" >> .env
+        fi
+
+        php artisan config:clear --quiet
+        php artisan migrate --force
+
+        nohup php artisan serve --host=0.0.0.0 --port="$port" \
+            > storage/logs/preview-serve.log 2>&1 < /dev/null &
+        serve_pid_started=$!
+        set_owner_for_port "$port" "$name"
+        sleep 2
+
+        status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Host: ${HOSTS[$slot]}.ddev.site" \
+            "http://localhost:$port$PREVIEW_HEALTH_PATH" || true)
+
+        if ! [[ "$status" =~ ^[23][0-9][0-9]$ ]]; then
+            echo "Preview health probe failed with status ${status:-unreachable}" >&2
+            echo "Inspect $dir/storage/logs/preview-serve.log" >&2
+            echo "The process remains available for debugging: pid $serve_pid_started" >&2
+            exit 1
+        fi
+
+        echo "Preview of $name: $app_url"
+        echo "Health probe: $PREVIEW_HEALTH_PATH -> $status"
+        echo "Database: $clone_db"
+        ;;
+
+    *)
+        echo "usage: ddev preview [status|stop [<worktree-name>|all]|start <worktree-name> [--fresh]]" >&2
+        exit 2
+        ;;
+esac
+

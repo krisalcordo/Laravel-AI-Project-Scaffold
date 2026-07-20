@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$root"
+
+required=(
+    AGENTS.md
+    PRODUCT.md
+    ARCHITECTURE.md
+    template/.project-scaffold
+    template/.github/pull_request_template.md
+    template/.github/workflows/tests.yml
+    template/.github/workflows/pr-contract.yml
+    template/.ddev/config.yaml
+    template/.ddev/commands/web/worktree-setup
+    template/.ddev/commands/web/preview
+    template/.ddev/commands/web/test-postgres
+    template/docs/project/PROJECT.md
+    template/tools/pr-contract/validate.php
+    template/tools/pr-contract/config.php
+    template/tools/pr-contract/tests/run.php
+)
+
+for file in "${required[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo "Missing required scaffold file: $file" >&2
+        exit 1
+    fi
+done
+
+bash -n bin/apply-scaffold
+bash -n bin/check-scaffold
+find template/.ddev -type f \( -name '*.sh' -o -path '*/commands/*' \) -print0 \
+    | xargs -0 -n1 bash -n
+
+php template/tools/pr-contract/tests/run.php
+
+if command -v rg >/dev/null 2>&1; then
+    leak_output=$(rg --hidden -n 'formz|Ollivy|research-stores|demo@formz' . \
+        -g '!bin/check-scaffold' -g '!docs/SOURCE-NOTES.md' -g '!README.md' -g '!.git/**' || true)
+else
+    leak_output=$(grep -RInE 'formz|Ollivy|research-stores|demo@formz' . \
+        --exclude=check-scaffold --exclude=README.md --exclude=SOURCE-NOTES.md \
+        --exclude-dir=.git || true)
+fi
+
+if [ -n "$leak_output" ]; then
+    echo "$leak_output"
+    echo "Product-specific source terms leaked into reusable files." >&2
+    exit 1
+fi
+
+echo "Scaffold checks passed."

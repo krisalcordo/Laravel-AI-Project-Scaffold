@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+## Description: Run Laravel tests on an isolated throwaway PostgreSQL database
+## Usage: test-postgres [--worktree <name>] [artisan test arguments]
+## Example: "ddev test-postgres --filter=FeatureName"
+
+set -euo pipefail
+
+ROOT=/var/www/html
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=.ddev/lib/project-settings.sh
+source "$SCRIPT_DIR/../../lib/project-settings.sh"
+# shellcheck source=.ddev/lib/worktree-paths.sh
+source "$SCRIPT_DIR/../../lib/worktree-paths.sh"
+load_scaffold_settings "$ROOT"
+
+if [ "${1:-}" = "--worktree" ]; then
+    name=${2:?usage: ddev test-postgres --worktree <name> [artisan test arguments]}
+    worktree=$(scaffold_worktree_dir "$ROOT" "$name")
+    cd "$worktree"
+    shift 2
+else
+    cd "$ROOT"
+fi
+
+[ -f artisan ] || { echo "artisan not found in $PWD" >&2; exit 1; }
+[ -f vendor/autoload.php ] || { echo "vendor/ is missing; install Composer dependencies first" >&2; exit 1; }
+
+DB_HOST=${DB_HOST:-db}
+DB_PORT=${DB_PORT:-5432}
+DB_USERNAME=${DB_USERNAME:-db}
+DB_PASSWORD=${DB_PASSWORD:-db}
+database_prefix=${PROJECT_SLUG//-/_}
+TEST_DATABASE="${database_prefix}_test_${$}_${RANDOM}"
+
+export PGPASSWORD="$DB_PASSWORD"
+
+psql_admin() {
+    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME" -d postgres \
+        -v ON_ERROR_STOP=1 "$@"
+}
+
+cleanup() {
+    psql_admin -q -c "DROP DATABASE IF EXISTS \"$TEST_DATABASE\" WITH (FORCE)" >/dev/null
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+psql_admin -q -c "CREATE DATABASE \"$TEST_DATABASE\"" >/dev/null
+
+export DB_CONNECTION=pgsql
+export DB_URL=
+export DB_HOST DB_PORT DB_USERNAME DB_PASSWORD
+export DB_DATABASE="$TEST_DATABASE"
+
+echo "Running tests on isolated PostgreSQL database $TEST_DATABASE"
+php artisan test "$@"
+

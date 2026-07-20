@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage:
+  bin/apply-scaffold --target PATH --name NAME --slug SLUG --description TEXT [--force]
+
+Applies the reusable workflow files to an existing Laravel application.
+Existing destination files are never overwritten unless --force is supplied.
+EOF
+}
+
+target=
+project_name=
+project_slug=
+project_description=
+force=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --target) target=${2:-}; shift 2 ;;
+        --name) project_name=${2:-}; shift 2 ;;
+        --slug) project_slug=${2:-}; shift 2 ;;
+        --description) project_description=${2:-}; shift 2 ;;
+        --force) force=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [ -z "$target" ] || [ -z "$project_name" ] || [ -z "$project_slug" ] || [ -z "$project_description" ]; then
+    usage >&2
+    exit 2
+fi
+
+if ! [[ "$project_slug" =~ ^[a-z][a-z0-9-]*$ ]]; then
+    echo "--slug must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens" >&2
+    exit 2
+fi
+
+target=$(cd "$target" 2>/dev/null && pwd) || {
+    echo "Target does not exist: $target" >&2
+    exit 1
+}
+
+if [ ! -f "$target/artisan" ] || [ ! -f "$target/composer.json" ]; then
+    echo "Target is not an existing Laravel application: $target" >&2
+    exit 1
+fi
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+scaffold_root=$(cd "$script_dir/.." && pwd)
+
+declare -a root_files=(AGENTS.md PRODUCT.md ARCHITECTURE.md)
+declare -a conflicts=()
+declare -a installed_files=()
+
+for file in "${root_files[@]}"; do
+    [ ! -e "$target/$file" ] || conflicts+=("$file")
+done
+
+while IFS= read -r source_path; do
+    relative=${source_path#"$scaffold_root/template/"}
+    [ ! -e "$target/$relative" ] || conflicts+=("$relative")
+done < <(find "$scaffold_root/template" -type f | sort)
+
+if [ "${#conflicts[@]}" -gt 0 ] && [ "$force" -ne 1 ]; then
+    echo "Refusing to overwrite existing target paths:" >&2
+    printf '  %s\n' "${conflicts[@]}" >&2
+    echo "Merge them manually or rerun with --force after committing the target." >&2
+    exit 1
+fi
+
+for file in "${root_files[@]}"; do
+    cp "$scaffold_root/$file" "$target/$file"
+    installed_files+=("$target/$file")
+done
+
+cp -R "$scaffold_root/template/." "$target/"
+
+while IFS= read -r source_path; do
+    relative=${source_path#"$scaffold_root/template/"}
+    installed_files+=("$target/$relative")
+done < <(find "$scaffold_root/template" -type f | sort)
+
+export SCAFFOLD_PROJECT_NAME="$project_name"
+export SCAFFOLD_PROJECT_SLUG="$project_slug"
+export SCAFFOLD_PROJECT_DESCRIPTION="$project_description"
+
+perl -0pi -e '
+    s/__PROJECT_NAME__/$ENV{SCAFFOLD_PROJECT_NAME}/g;
+    s/__PROJECT_SLUG__/$ENV{SCAFFOLD_PROJECT_SLUG}/g;
+    s/__PROJECT_DESCRIPTION__/$ENV{SCAFFOLD_PROJECT_DESCRIPTION}/g;
+' "${installed_files[@]}"
+
+find "$target/.ddev" "$target/tools" -type f \( -name '*.sh' -o -path '*/commands/*' -o -name 'validate.php' \) -exec chmod +x {} +
+
+cat <<EOF
+Scaffold applied to $target
+
+Next:
+  1. Complete PRODUCT.md, ARCHITECTURE.md, and .project-scaffold.
+  2. Merge vite.config.scaffold.js, phpunit.scaffold.xml, and .gitignore.scaffold.
+  3. Run .ddev/generate-preview-slots.sh, then start DDEV.
+  4. Follow docs/project/ADOPTION-CHECKLIST.md.
+EOF

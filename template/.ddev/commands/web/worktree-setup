@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+## Description: Bootstrap a Laravel worktree with its own dependencies and built assets
+## Usage: worktree-setup <worktree-name>
+## Example: "ddev worktree-setup feature-name"
+
+set -euo pipefail
+
+ROOT=/var/www/html
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+# shellcheck source=.ddev/lib/project-settings.sh
+source "$SCRIPT_DIR/../../lib/project-settings.sh"
+# shellcheck source=.ddev/lib/worktree-paths.sh
+source "$SCRIPT_DIR/../../lib/worktree-paths.sh"
+load_scaffold_settings "$ROOT"
+
+name=${1:?usage: ddev worktree-setup <worktree-name>}
+dir=$(scaffold_worktree_dir "$ROOT" "$name")
+cd "$dir"
+
+if [ -L vendor ]; then
+    echo "vendor is a symlink; a real worktree-local Composer install is required" >&2
+    exit 1
+fi
+
+if [ ! -f .env ]; then
+    if [ -f "$ROOT/.env" ]; then
+        cp "$ROOT/.env" .env
+    else
+        cp .env.example .env
+    fi
+fi
+
+if [ ! -f vendor/autoload.php ]; then
+    composer install --no-interaction --prefer-dist
+fi
+
+if ! grep -qE '^APP_KEY=.+' .env; then
+    php artisan key:generate --force
+fi
+
+mkdir -p storage/framework/cache/data storage/framework/sessions \
+    storage/framework/views storage/logs bootstrap/cache
+
+if [ "$SHARE_PREVIEW_UPLOADS" = 1 ]; then
+    relative=${PWD#"$ROOT"/}
+    up=
+    IFS=/ read -r -a segments <<< "$relative/public"
+    for _segment in "${segments[@]}"; do up="../$up"; done
+    ln -sfn "${up}storage/app/public" public/storage
+else
+    if [ ! -e public/storage ] && [ ! -L public/storage ]; then
+        php artisan storage:link
+    fi
+fi
+
+if [ ! -d node_modules ]; then
+    npm ci --no-audit --no-fund
+fi
+
+npm run build
+
+echo "Running smoke test filter: $SCAFFOLD_SMOKE_TEST_FILTER"
+php artisan test --filter="$SCAFFOLD_SMOKE_TEST_FILTER"
+
+echo "Worktree $name is ready."
