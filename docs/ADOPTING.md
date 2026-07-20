@@ -145,6 +145,9 @@ git worktree remove .worktrees/scaffold-smoke
 
 Run DDEV commands from the main checkout.
 
+See [WORKTREES.md](WORKTREES.md) for supported worktree layouts, isolated
+database behavior, preview capacity, upload isolation, and command lifecycle.
+
 ## 8. Protect the GitHub workflow
 
 Once the repository is pushed:

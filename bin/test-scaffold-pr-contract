@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/scaffold-pr-contract.XXXXXX")
+trap 'rm -rf "$scratch"' EXIT
+
+cat > "$scratch/body.md" <<'MD'
+## Summary
+
+Documented scaffold behavior.
+
+## Preview
+
+No runnable preview: this is a tooling repository.
+
+## Test accounts
+
+No authentication required.
+
+## Browser validation
+
+No browser-visible surface: installer and contract tooling only.
+
+## Test coverage
+
+| Behavior | Check |
+| --- | --- |
+| Installer contract | `./bin/check-scaffold` |
+
+### Remaining gaps
+
+None.
+
+## Validation
+
+- [x] `./bin/check-scaffold`
+MD
+
+printf 'docs/ADOPTING.md\n' > "$scratch/changed-files.txt"
+
+php "$root/template/tools/pr-contract/validate.php" \
+    --config="$root/tools/scaffold-pr-contract.php" \
+    --body-file="$scratch/body.md" \
+    --changed-files="$scratch/changed-files.txt" \
+    --repo-root="$root" >/dev/null
+
+perl -0pi -e 's/No browser-visible surface: installer and contract tooling only\.//g' "$scratch/body.md"
+
+if php "$root/template/tools/pr-contract/validate.php" \
+    --config="$root/tools/scaffold-pr-contract.php" \
+    --body-file="$scratch/body.md" \
+    --changed-files="$scratch/changed-files.txt" \
+    --repo-root="$root" >/dev/null 2>&1; then
+    echo "Scaffold PR contract accepted a body without browser-surface disclosure" >&2
+    exit 1
+fi
+
+echo "Scaffold PR contract checks passed."

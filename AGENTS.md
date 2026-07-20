@@ -20,6 +20,11 @@ applications receive their reusable instructions from `template/AGENTS.md`.
   installer copies it to the generated project at the same path.
 - `template/tools/pr-contract/config.php` carries project-customizable policy;
   `PrContractValidator.php` carries reusable enforcement.
+- `.github/workflows/pr-contract.yml` enforces the scaffold repository's own
+  documentation contract; `template/.github/workflows/pr-contract.yml` is the
+  independently configurable workflow installed into generated projects.
+- `template/.ddev/` is the source of truth for generated multi-worktree
+  bootstrap, preview, and isolated PostgreSQL test commands.
 - Do not add application domain models, routes, fixtures, accounts, deployment
   providers, or visual branding to this repository.
 
@@ -64,4 +69,3 @@ Also apply the scaffold to a disposable Laravel-shaped directory and verify:
 
 Inspect the complete diff and ensure no product-specific source terms leaked
 into `template/` before committing.
-

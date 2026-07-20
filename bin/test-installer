@@ -26,11 +26,28 @@ required=(
     .agents/skills/impeccable/reference/polish.md
     .agents/skills/impeccable/scripts/load-context.mjs
     .github/workflows/pr-contract.yml
+    .ddev/commands/web/worktree-setup
+    .ddev/commands/web/preview
+    .ddev/commands/web/test-postgres
+    .ddev/generate-preview-slots.sh
+    .ddev/lib/worktree-paths.sh
+    docs/project/WORKTREES.md
     tools/pr-contract/PrContractValidator.php
 )
 
 for file in "${required[@]}"; do
     [ -f "$target/$file" ] || { echo "Installer omitted $file" >&2; exit 1; }
+done
+
+executables=(
+    .ddev/commands/web/worktree-setup
+    .ddev/commands/web/preview
+    .ddev/commands/web/test-postgres
+    .ddev/generate-preview-slots.sh
+)
+
+for file in "${executables[@]}"; do
+    [ -x "$target/$file" ] || { echo "Installer lost executable bit on $file" >&2; exit 1; }
 done
 
 grep -q '^name: Scaffold Check$' "$target/DESIGN.md"
@@ -48,6 +65,34 @@ grep -q '"hasDesign": true' <<< "$context"
 "$target/.ddev/generate-preview-slots.sh" 3 >/dev/null
 grep -q 'scaffold-check-preview-3' "$target/.ddev/config.preview.yaml"
 grep -q 'container_port: 8204' "$target/.ddev/config.preview.yaml"
+
+# shellcheck source=/dev/null
+source "$target/.ddev/lib/worktree-paths.sh"
+
+mkdir -p "$target/.worktrees/manual-one"
+[ "$(scaffold_worktree_dir "$target" manual-one)" = "$target/.worktrees/manual-one" ] || {
+    echo "Manual worktree layout was not resolved" >&2
+    exit 1
+}
+
+mkdir -p "$target/.claude/worktrees/claude-one"
+[ "$(scaffold_worktree_dir "$target" claude-one)" = "$target/.claude/worktrees/claude-one" ] || {
+    echo "Claude worktree layout was not resolved" >&2
+    exit 1
+}
+
+repo_dir=$(basename "$target")
+mkdir -p "$target/.worktrees/codex-app/session-one/$repo_dir"
+[ "$(scaffold_worktree_dir "$target" session-one)" = "$target/.worktrees/codex-app/session-one/$repo_dir" ] || {
+    echo "Codex app worktree layout was not resolved" >&2
+    exit 1
+}
+
+mkdir -p "$target/.worktrees/ambiguous" "$target/.claude/worktrees/ambiguous"
+if scaffold_worktree_dir "$target" ambiguous >/dev/null 2>&1; then
+    echo "Ambiguous worktree layouts were not rejected" >&2
+    exit 1
+fi
 
 if "$root/bin/apply-scaffold" \
     --target "$target" \

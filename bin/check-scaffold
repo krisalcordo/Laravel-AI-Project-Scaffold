@@ -10,11 +10,16 @@ required=(
     PRODUCT.md
     DESIGN.md
     ARCHITECTURE.md
+    .github/pull_request_template.md
+    .github/workflows/pr-contract.yml
     .agents/skills/impeccable/SKILL.md
     .agents/skills/impeccable/reference/audit.md
     .agents/skills/impeccable/reference/polish.md
     .agents/skills/impeccable/scripts/load-context.mjs
     bin/test-installer
+    bin/test-scaffold-pr-contract
+    docs/WORKTREES.md
+    tools/scaffold-pr-contract.php
     template/AGENTS.md
     template/PRODUCT.md
     template/DESIGN.md
@@ -27,7 +32,10 @@ required=(
     template/.ddev/commands/web/worktree-setup
     template/.ddev/commands/web/preview
     template/.ddev/commands/web/test-postgres
+    template/.ddev/generate-preview-slots.sh
+    template/.ddev/lib/worktree-paths.sh
     template/docs/project/PROJECT.md
+    template/docs/project/WORKTREES.md
     template/tools/pr-contract/validate.php
     template/tools/pr-contract/config.php
     template/tools/pr-contract/tests/run.php
@@ -43,10 +51,12 @@ done
 bash -n bin/apply-scaffold
 bash -n bin/check-scaffold
 bash -n bin/test-installer
+bash -n bin/test-scaffold-pr-contract
 find template/.ddev -type f \( -name '*.sh' -o -path '*/commands/*' \) -print0 \
     | xargs -0 -n1 bash -n
 
 php template/tools/pr-contract/tests/run.php
+bin/test-scaffold-pr-contract
 node .agents/skills/impeccable/scripts/load-context.mjs >/dev/null
 IMPECCABLE_CONTEXT_DIR=template node .agents/skills/impeccable/scripts/load-context.mjs >/dev/null
 bin/test-installer

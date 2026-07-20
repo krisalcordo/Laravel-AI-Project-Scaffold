@@ -8,7 +8,7 @@ the first week of a project:
 
 - canonical, tool-neutral agent instructions;
 - an explicit product and architecture brief;
-- isolated DDEV worktree previews;
+- concurrent DDEV worktree previews with isolated PostgreSQL databases;
 - fast SQLite tests plus production-parity PostgreSQL tests;
 - independent implementation, coverage, data, and browser-review playbooks;
 - a vendored Impeccable design workflow with product and design context gates;
@@ -37,6 +37,9 @@ then apply the operational baseline in this repository.
 | Engineering quality | PHPUnit, Pint, GitHub Actions | Behavior, style, and two-engine validation |
 
 See [docs/STACK.md](docs/STACK.md) for the boundaries and rationale.
+
+The multi-worktree lifecycle is documented in
+[docs/WORKTREES.md](docs/WORKTREES.md).
 
 ## Use it on a new project
 
@@ -98,8 +101,20 @@ project at `.agents/skills/impeccable/`. UI pull requests must document its
 context, audit, and polish passes before the PR contract accepts them. See
 [docs/IMPECCABLE.md](docs/IMPECCABLE.md).
 
+## Pull requests and worktrees
+
+The scaffold repository enforces its own PR contract through
+`.github/workflows/pr-contract.yml`. Generated applications receive a separate,
+project-configurable contract from `template/.github/workflows/pr-contract.yml`
+and `template/tools/pr-contract/`.
+
+Generated applications also receive worktree bootstrap, isolated preview, and
+PostgreSQL test commands under `template/.ddev/`. The installer test verifies
+all supported worktree layouts, generated preview slots, executable command
+permissions, and ambiguity handling. See [docs/WORKTREES.md](docs/WORKTREES.md)
+for the operating guide.
+
 ## Repository status
 
-This directory is an independent Git repository on `main`, ready to connect to
-its eventual remote. Run `./bin/check-scaffold` before publishing changes to the
-scaffold itself.
+This directory is an independent Git repository on `main`. Run
+`./bin/check-scaffold` before publishing changes to the scaffold itself.
