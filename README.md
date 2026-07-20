@@ -11,6 +11,7 @@ the first week of a project:
 - isolated DDEV worktree previews;
 - fast SQLite tests plus production-parity PostgreSQL tests;
 - independent implementation, coverage, data, and browser-review playbooks;
+- a vendored Impeccable design workflow with product and design context gates;
 - screenshot-backed pull requests; and
 - a machine-enforced pull-request contract.
 
@@ -32,7 +33,8 @@ then apply the operational baseline in this repository.
 | Styling/build | Tailwind CSS, Vite; Alpine for small Blade islands | Design system and frontend assets |
 | Authentication | Laravel Breeze | Small, understandable auth baseline |
 | Internal admin | Filament (optional) | Operator tooling, kept separate from customer UI |
-| Quality | PHPUnit, Pint, GitHub Actions | Behavior, style, and two-engine validation |
+| Design quality | Impeccable, `PRODUCT.md`, `DESIGN.md` | Shaping, audit, polish, accessibility, and visual-system continuity |
+| Engineering quality | PHPUnit, Pint, GitHub Actions | Behavior, style, and two-engine validation |
 
 See [docs/STACK.md](docs/STACK.md) for the boundaries and rationale.
 
@@ -49,7 +51,7 @@ See [docs/STACK.md](docs/STACK.md) for the boundaries and rationale.
      --description "A short statement of what the product does"
    ```
 
-3. Complete the generated `PRODUCT.md`, `ARCHITECTURE.md`, and
+3. Complete the generated `PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, and
    `.project-scaffold` files before feature work begins.
 4. Merge the supplied Vite and PHPUnit references if the new Laravel starter
    already contains project-specific changes.
@@ -64,9 +66,10 @@ reviewing the target and committing its current state.
 ```text
 AGENTS.md                         canonical coding-agent rules
 PRODUCT.md                        product/design brief template
+DESIGN.md                         visual-system and token template
 ARCHITECTURE.md                   system-boundary template
 .project-scaffold                 project-specific workflow settings
-.agents/                          tool-neutral role playbooks
+.agents/                          role playbooks plus the complete Impeccable skill
 .ddev/                            local, worktree, preview, and Postgres helpers
 .github/                          CI and pull-request contract
 tools/pr-contract/                local/CI PR-body validator
@@ -83,13 +86,20 @@ The scaffold distinguishes reusable engineering policy from product truth:
 
 - `AGENTS.md` says **how work is performed and proven**.
 - `PRODUCT.md` says **who the product serves and what must remain true**.
+- `DESIGN.md` says **how the interface looks, behaves, and stays coherent**.
 - `ARCHITECTURE.md` says **where behavior belongs and which boundaries matter**.
 - `.project-scaffold` supplies **local names, URLs, health checks, and smoke-test settings**.
 
 That separation is the key to reusing this baseline without importing the
 business logic of the project that inspired it.
 
+Impeccable is included in the repository and installed into every generated
+project at `.agents/skills/impeccable/`. UI pull requests must document its
+context, audit, and polish passes before the PR contract accepts them. See
+[docs/IMPECCABLE.md](docs/IMPECCABLE.md).
+
 ## Repository status
 
-This repository is ready to initialize and push as its own Git repository.
-Run `./bin/check-scaffold` before publishing changes to the scaffold itself.
+This directory is an independent Git repository on `main`, ready to connect to
+its eventual remote. Run `./bin/check-scaffold` before publishing changes to the
+scaffold itself.

@@ -53,18 +53,20 @@ fi
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 scaffold_root=$(cd "$script_dir/.." && pwd)
 
-declare -a root_files=(AGENTS.md PRODUCT.md ARCHITECTURE.md)
 declare -a conflicts=()
 declare -a installed_files=()
-
-for file in "${root_files[@]}"; do
-    [ ! -e "$target/$file" ] || conflicts+=("$file")
-done
+skill_source="$scaffold_root/.agents/skills/impeccable"
 
 while IFS= read -r source_path; do
     relative=${source_path#"$scaffold_root/template/"}
     [ ! -e "$target/$relative" ] || conflicts+=("$relative")
 done < <(find "$scaffold_root/template" -type f | sort)
+
+while IFS= read -r source_path; do
+    relative=${source_path#"$skill_source/"}
+    destination=".agents/skills/impeccable/$relative"
+    [ ! -e "$target/$destination" ] || conflicts+=("$destination")
+done < <(find "$skill_source" -type f | sort)
 
 if [ "${#conflicts[@]}" -gt 0 ] && [ "$force" -ne 1 ]; then
     echo "Refusing to overwrite existing target paths:" >&2
@@ -73,17 +75,19 @@ if [ "${#conflicts[@]}" -gt 0 ] && [ "$force" -ne 1 ]; then
     exit 1
 fi
 
-for file in "${root_files[@]}"; do
-    cp "$scaffold_root/$file" "$target/$file"
-    installed_files+=("$target/$file")
-done
-
 cp -R "$scaffold_root/template/." "$target/"
+mkdir -p "$target/.agents/skills"
+cp -R "$skill_source" "$target/.agents/skills/"
 
 while IFS= read -r source_path; do
     relative=${source_path#"$scaffold_root/template/"}
     installed_files+=("$target/$relative")
 done < <(find "$scaffold_root/template" -type f | sort)
+
+while IFS= read -r source_path; do
+    relative=${source_path#"$skill_source/"}
+    installed_files+=("$target/.agents/skills/impeccable/$relative")
+done < <(find "$skill_source" -type f | sort)
 
 export SCAFFOLD_PROJECT_NAME="$project_name"
 export SCAFFOLD_PROJECT_SLUG="$project_slug"
@@ -101,7 +105,8 @@ cat <<EOF
 Scaffold applied to $target
 
 Next:
-  1. Complete PRODUCT.md, ARCHITECTURE.md, and .project-scaffold.
+  1. Complete PRODUCT.md, DESIGN.md, ARCHITECTURE.md, and .project-scaffold.
+     Use \$impeccable teach/document before UI implementation.
   2. Merge vite.config.scaffold.js, phpunit.scaffold.xml, and .gitignore.scaffold.
   3. Run .ddev/generate-preview-slots.sh, then start DDEV.
   4. Follow docs/project/ADOPTION-CHECKLIST.md.

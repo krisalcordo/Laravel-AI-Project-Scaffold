@@ -21,6 +21,81 @@ final class ExampleTest
 }
 PHP);
 
+$productContext = <<<'MD'
+# Product
+
+## Register
+
+product
+
+## Users
+
+Operators use this application to complete a focused workflow accurately under
+time pressure. They need predictable controls, clear state, and safe recovery.
+
+## Product Purpose
+
+The application turns a multi-step operational process into a reliable shared
+system with explicit ownership, validation, and downstream visibility.
+
+## Brand Personality
+
+Calm, precise, dependable.
+
+## Anti-references
+
+Avoid decorative dashboards, generic card grids, and unfamiliar controls.
+
+## Design Principles
+
+- Keep the primary task visible.
+- Make state and errors explicit.
+- Prefer familiar interaction patterns.
+
+## Accessibility & Inclusion
+
+Meet WCAG 2.1 AA and support keyboard, reduced-motion, and zoomed layouts.
+MD;
+
+$designContext = <<<'MD'
+---
+name: Sample Application
+description: A restrained, dependable product interface.
+---
+
+# Design System: Sample Application
+
+## 1. Overview
+
+The interface is calm, task-led, and structurally responsive. Motion only
+communicates state and every interactive component has complete states.
+
+## 2. Colors
+
+Use tinted neutrals and one restrained accent with semantic status colors.
+
+## 3. Typography
+
+Use one readable sans family with a clear fixed type scale and 70ch prose.
+
+## 4. Elevation
+
+Use tonal layers first and subtle shadows only for temporary lifted surfaces.
+
+## 5. Components
+
+Buttons, fields, navigation, loading, empty, error, and disabled states share
+one component vocabulary across the application.
+
+## 6. Do's and Don'ts
+
+Do prioritize the task. Don't use generic card grids, decorative motion, or
+unfamiliar controls.
+MD;
+
+file_put_contents($root.'/PRODUCT.md', $productContext);
+file_put_contents($root.'/DESIGN.md', $designContext);
+
 $baseBody = <<<'MD'
 ## Summary
 
@@ -69,6 +144,16 @@ Validated UI behavior.
 | Scenario | Email | Password |
 | --- | --- | --- |
 | Demo | `demo@sample.test` | `password` |
+
+## Impeccable review
+
+- [x] Product and design context loaded from PRODUCT.md and DESIGN.md
+- [x] Impeccable audit completed and findings resolved
+- [x] Impeccable polish completed
+- [x] Accessibility review covered keyboard and focus states
+- [x] Responsive review covered mobile and desktop layouts
+
+Findings resolved: None.
 
 ## Browser validation
 
@@ -119,8 +204,36 @@ $tests = [
     },
     'UI evidence omissions fail' => static function () use ($validator, $baseBody, $root): void {
         $errors = $validator->validate($baseBody, ['resources/js/Pages/Home.tsx'], $root, []);
+        assertContains('Missing required heading: Impeccable review.', $errors);
         assertContains('Browser evidence must include a `Console:` result.', $errors);
         assertContains('Frontend changes must include a `Frontend-only coverage:` disclosure.', $errors);
+    },
+    'incomplete Impeccable review fails' => static function () use ($validator, $uiBody, $root, $archiveFiles): void {
+        $body = str_replace(
+            '- [x] Impeccable audit completed and findings resolved',
+            '- [ ] Impeccable audit completed and findings resolved',
+            $uiBody,
+        );
+        $errors = $validator->validate($body, ['resources/js/Pages/Home.tsx'], $root, $archiveFiles);
+        assertContains('Impeccable review missing a completed status line: Impeccable audit.', $errors);
+    },
+    'seed design context blocks UI changes' => static function () use ($validator, $uiBody, $root, $archiveFiles, $designContext): void {
+        file_put_contents($root.'/DESIGN.md', "<!-- SEED: unresolved -->\n".$designContext);
+        $errors = $validator->validate($uiBody, ['resources/js/Pages/Home.tsx'], $root, $archiveFiles);
+        assertContains('Design context file still contains scaffold placeholders: DESIGN.md.', $errors);
+        file_put_contents($root.'/DESIGN.md', $designContext);
+    },
+    'missing product context blocks UI changes' => static function () use ($validator, $uiBody, $root, $archiveFiles, $productContext): void {
+        unlink($root.'/PRODUCT.md');
+        $errors = $validator->validate($uiBody, ['resources/js/Pages/Home.tsx'], $root, $archiveFiles);
+        assertContains('UI changes require design context file: PRODUCT.md.', $errors);
+        file_put_contents($root.'/PRODUCT.md', $productContext);
+    },
+    'incomplete DESIGN sections block UI changes' => static function () use ($validator, $uiBody, $root, $archiveFiles, $designContext): void {
+        file_put_contents($root.'/DESIGN.md', str_replace('## 5. Components', '### Components', $designContext));
+        $errors = $validator->validate($uiBody, ['resources/js/Pages/Home.tsx'], $root, $archiveFiles);
+        assertContains('DESIGN.md is missing required section: Components.', $errors);
+        file_put_contents($root.'/DESIGN.md', $designContext);
     },
     'runtime mapping must exist' => static function () use ($validator, $baseBody, $root): void {
         $body = str_replace('tests/Feature/ExampleTest.php::test_example', 'tests/Feature/MissingTest.php::test_missing', $baseBody);
@@ -139,6 +252,16 @@ $tests = [
             $browser,
             $baseBody,
         );
+        $body .= <<<'MD'
+
+## Impeccable review
+
+- [x] Product and design context loaded from PRODUCT.md and DESIGN.md
+- [x] Impeccable audit completed and findings resolved
+- [x] Impeccable polish completed
+- [x] Accessibility review covered keyboard and focus states
+- [x] Responsive review covered mobile and desktop layouts
+MD;
         $body .= "\n\nFrontend-only coverage: Manual browser verification required.\n";
         assertSame([], $validator->validate($body, ['resources/js/Pages/Home.tsx'], $root, []));
     },
@@ -193,4 +316,3 @@ function removeTree(string $path): void
     }
     rmdir($path);
 }
-

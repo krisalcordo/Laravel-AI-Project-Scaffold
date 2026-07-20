@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+target=$(mktemp -d "${TMPDIR:-/tmp}/laravel-project-scaffold.XXXXXX")
+trap 'rm -rf "$target"' EXIT
+
+touch "$target/artisan"
+printf '{}\n' > "$target/composer.json"
+
+"$root/bin/apply-scaffold" \
+    --target "$target" \
+    --name "Scaffold Check" \
+    --slug scaffold-check \
+    --description "Disposable installer verification" >/dev/null
+
+required=(
+    AGENTS.md
+    PRODUCT.md
+    DESIGN.md
+    ARCHITECTURE.md
+    .agents/impeccable-review.md
+    .agents/skills/impeccable/SKILL.md
+    .agents/skills/impeccable/reference/audit.md
+    .agents/skills/impeccable/reference/polish.md
+    .agents/skills/impeccable/scripts/load-context.mjs
+    .github/workflows/pr-contract.yml
+    tools/pr-contract/PrContractValidator.php
+)
+
+for file in "${required[@]}"; do
+    [ -f "$target/$file" ] || { echo "Installer omitted $file" >&2; exit 1; }
+done
+
+grep -q '^name: Scaffold Check$' "$target/DESIGN.md"
+grep -q '^name: scaffold-check$' "$target/.ddev/config.yaml"
+grep -q 'Complete this file before substantive design' "$target/PRODUCT.md"
+grep -q '<!-- SEED:' "$target/DESIGN.md"
+
+skill_files=$(find "$target/.agents/skills/impeccable" -type f | wc -l | tr -d ' ')
+[ "$skill_files" -ge 50 ] || { echo "Impeccable bundle is incomplete ($skill_files files)" >&2; exit 1; }
+
+context=$(cd "$target" && node .agents/skills/impeccable/scripts/load-context.mjs)
+grep -q '"hasProduct": true' <<< "$context"
+grep -q '"hasDesign": true' <<< "$context"
+
+"$target/.ddev/generate-preview-slots.sh" 3 >/dev/null
+grep -q 'scaffold-check-preview-3' "$target/.ddev/config.preview.yaml"
+grep -q 'container_port: 8204' "$target/.ddev/config.preview.yaml"
+
+if "$root/bin/apply-scaffold" \
+    --target "$target" \
+    --name "Scaffold Check" \
+    --slug scaffold-check \
+    --description "Disposable installer verification" >/dev/null 2>&1; then
+    echo "Installer overwrote an existing scaffold without --force" >&2
+    exit 1
+fi
+
+echo "Installer checks passed."

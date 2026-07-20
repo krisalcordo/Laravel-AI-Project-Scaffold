@@ -39,6 +39,29 @@ return [
     'minimum_screenshots' => 3,
     'required_test_account_count' => 1,
 
+    // UI work must carry real project context and an independent Impeccable
+    // review before browser evidence is accepted.
+    'design_context_files' => [
+        'PRODUCT.md',
+        'DESIGN.md',
+    ],
+
+    'design_context_placeholder_patterns' => [
+        '/Complete this file before/i',
+        '/Replace every prompt/i',
+        '/<!--\s*SEED/i',
+        '/<!--[^>]*(?:What|Who|Describe|List|Record|Three adjectives|How should|Name plausible)[^>]*-->/is',
+        '/to be resolved during implementation/i',
+    ],
+
+    'impeccable_checks' => [
+        'Product and design context loaded' => '/context.*loaded|loaded.*PRODUCT\.md.*DESIGN\.md/i',
+        'Impeccable audit' => '/Impeccable.*audit|audit.*Impeccable/i',
+        'Impeccable polish' => '/Impeccable.*polish|polish.*Impeccable/i',
+        'Accessibility review' => '/accessibility|WCAG|keyboard|focus/i',
+        'Responsive review' => '/responsive|mobile|viewport|breakpoint/i',
+    ],
+
     // Migration PRs must update at least one file matching every companion.
     // Remove or specialize entries when the project has a different data model.
     'schema_companions' => [
@@ -46,4 +69,3 @@ return [
         'a demo seeder' => '#^database/seeders/#',
     ],
 ];
-

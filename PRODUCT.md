@@ -1,61 +1,66 @@
-# Product brief
+# Product
 
-Complete this file before substantive design or feature work. Replace every
-prompt; do not leave product decisions implicit in tickets or agent chats.
+## Register
 
-## Product name
+product
 
-<!-- What is the product called? -->
+## Users
 
-## One-sentence purpose
+Laravel teams and coding agents starting a new product repository. They want a
+repeatable technical baseline without copying another application's business
+logic, accounts, routes, infrastructure, or visual identity.
 
-<!-- Who can accomplish what, and why does that matter? -->
+The primary job is to move from a clean Laravel application to a disciplined,
+reviewable development environment with little reinvention. Maintainers also
+need one upstream place to improve that baseline for future projects.
 
-## Primary users
+## Product Purpose
 
-<!-- Describe roles, context, technical comfort, and the job they are doing. -->
+Laravel Project Scaffold packages the operational layer that ordinary framework
+starters omit: canonical agent guidance, DDEV worktrees, isolated previews,
+SQLite and PostgreSQL validation, demo-data discipline, browser evidence,
+Impeccable design review, and a machine-enforced pull-request contract.
 
-## Success moment
+Success means a new project can apply the scaffold, supply its own product and
+design truth, and achieve the same review rigor without inheriting unrelated
+domain code.
 
-<!-- What observable outcome tells us the product worked for a new user? -->
+## Brand Personality
 
-## Product principles
-
-<!-- List three to five rules that should resolve ambiguous feature decisions. -->
-
--
-
-## Load-bearing domain rules
-
-<!-- Record invariants involving money, ownership, state transitions, identity,
-     inventory/counters, privacy, or optional integrations. -->
-
--
-
-## Brand personality
-
-<!-- Three adjectives plus a short explanation. -->
-
-## Design principles
-
-<!-- How should hierarchy, density, motion, feedback, and empty states feel? -->
-
--
+Precise, dependable, opinionated. The scaffold should feel like experienced
+engineering judgment made portable: direct enough to follow under pressure,
+specific enough to automate, and restrained enough to fit many products.
 
 ## Anti-references
 
-<!-- What should this product specifically avoid looking or behaving like? -->
+- Framework starters that demonstrate installation but omit the operating
+  practices required to ship safely.
+- Giant boilerplate applications that force new products to delete sample
+  domain code before they can begin.
+- Process documents made entirely of unenforced checklists.
+- Generic AI-generated interfaces that ignore product context, accessibility,
+  responsive behavior, and a coherent design system.
+- Tool-specific instructions that make the repository unusable by another
+  coding agent.
 
--
+## Design Principles
 
-## Accessibility and inclusion
+- **Portable, not abstract.** Defaults are immediately useful, while every
+  product-specific name, route, account, and critical flow remains configurable.
+- **Evidence is part of the work.** Tests, browser round trips, console and
+  network inspection, screenshots, and PR-body mappings are deliverables.
+- **Design context precedes interface code.** Generated projects carry
+  Impeccable, `PRODUCT.md`, and `DESIGN.md`; UI work cannot pass the PR contract
+  while those files remain placeholders.
+- **One source for every rule.** Reusable policy lives in the scaffold; each
+  generated project owns its product, architecture, and visual system.
+- **The validator protects the standard.** Feature work fixes evidence or
+  implementation gaps. It never weakens the gate merely to pass.
 
-WCAG 2.1 AA is the minimum. Document any additional keyboard, motion,
-localization, contrast, assistive-technology, or audience-specific needs.
+## Accessibility & Inclusion
 
-## Explicit non-goals
-
-<!-- Name plausible adjacent products or workflows this project will not own. -->
-
--
+Generated projects target WCAG 2.1 AA at minimum. The workflow requires
+keyboard, focus, responsive, motion, contrast, error-state, and real browser
+review for user-facing changes. Instructions use plain language and remain
+tool-neutral wherever the underlying capability is not tool-specific.
 

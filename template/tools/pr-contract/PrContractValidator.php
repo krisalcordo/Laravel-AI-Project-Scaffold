@@ -32,6 +32,8 @@ final class PrContractValidator
         $this->validateTestAccounts($body, $errors);
 
         if ($uiChanged) {
+            $this->validateDesignContext($repoRoot, $errors);
+            $this->validateImpeccableReview($body, $errors);
             $this->validateBrowserEvidence($body, $errors, $archiveFiles);
         } elseif (! str_contains($body, 'No browser-visible surface:')) {
             $errors[] = 'Non-UI PRs must state `No browser-visible surface: <why>`.';
@@ -107,6 +109,77 @@ final class PrContractValidator
         preg_match_all('/`[^`\s]+@[^`\s]+`[^\r\n]*`password`/i', $section, $matches);
         if (count($matches[0]) < $required) {
             $errors[] = "Test accounts must include at least {$required} safe seeded email/password row(s), or state `No authentication required.`";
+        }
+    }
+
+    /** @param list<string> $errors */
+    private function validateDesignContext(string $repoRoot, array &$errors): void
+    {
+        $files = $this->config['design_context_files'] ?? [];
+        $placeholderPatterns = $this->config['design_context_placeholder_patterns'] ?? [];
+
+        if (! is_array($files)) {
+            return;
+        }
+
+        foreach ($files as $path) {
+            if (! is_string($path)) {
+                continue;
+            }
+
+            $fullPath = rtrim($repoRoot, '/').'/'.ltrim($path, '/');
+            if (! is_file($fullPath)) {
+                $errors[] = "UI changes require design context file: {$path}.";
+                continue;
+            }
+
+            $contents = file_get_contents($fullPath) ?: '';
+            if (strlen(trim($contents)) < 200) {
+                $errors[] = "Design context file is too short to guide UI work: {$path}.";
+            }
+
+            if (is_array($placeholderPatterns)) {
+                foreach ($placeholderPatterns as $pattern) {
+                    if (is_string($pattern) && preg_match($pattern, $contents)) {
+                        $errors[] = "Design context file still contains scaffold placeholders: {$path}.";
+                        break;
+                    }
+                }
+            }
+
+            if (basename($path) === 'PRODUCT.md'
+                && ! preg_match('/^##\s+Register\s*$\R\s*(?:product|brand)\s*$/mi', $contents)) {
+                $errors[] = 'PRODUCT.md must declare an Impeccable register as bare `product` or `brand`.';
+            }
+
+            if (basename($path) === 'DESIGN.md') {
+                if (! str_starts_with(ltrim($contents), '---')) {
+                    $errors[] = 'DESIGN.md must begin with machine-readable YAML frontmatter.';
+                }
+
+                foreach (['Overview', 'Colors', 'Typography', 'Elevation', 'Components', "Do's and Don'ts"] as $section) {
+                    if (! preg_match('/^##\s+(?:\d+\.\s+)?'.preg_quote($section, '/').'\b.*$/mi', $contents)) {
+                        $errors[] = "DESIGN.md is missing required section: {$section}.";
+                    }
+                }
+            }
+        }
+    }
+
+    /** @param list<string> $errors */
+    private function validateImpeccableReview(string $body, array &$errors): void
+    {
+        $this->requireHeading($body, 'Impeccable review', $errors);
+        $checks = $this->config['impeccable_checks'] ?? [];
+
+        if (! is_array($checks)) {
+            return;
+        }
+
+        foreach ($checks as $label => $pattern) {
+            if (is_string($pattern) && ! $this->hasCompletedChecklistLine($body, $pattern)) {
+                $errors[] = "Impeccable review missing a completed status line: {$label}.";
+            }
         }
     }
 
@@ -249,4 +322,3 @@ final class PrContractValidator
         return false;
     }
 }
-

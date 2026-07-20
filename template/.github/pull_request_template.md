@@ -18,6 +18,19 @@ main-checkout change, link the main DDEV URL and label it honestly. -->
 | --- | --- | --- |
 | Demo user | `demo@__PROJECT_SLUG__.test` | `password` |
 
+## Impeccable review
+
+<!-- Required for every UI change. Complete after an independent Impeccable
+audit and polish pass, before browser/PR evidence review. -->
+
+- [ ] Product and design context loaded from `PRODUCT.md` and `DESIGN.md`
+- [ ] Impeccable audit completed and all in-diff P0-P2 findings resolved
+- [ ] Impeccable polish completed
+- [ ] Accessibility states reviewed: keyboard, focus, labels, errors, contrast, and reduced motion
+- [ ] Responsive behavior reviewed: mobile, tablet, desktop, touch targets, and overflow
+
+Findings resolved: <!-- Summarize concrete changes, or write `None.` -->
+
 ## Browser validation
 
 <!-- For no UI surface: No browser-visible surface: <why> -->
@@ -66,4 +79,3 @@ None.
 - [ ] Throwaway SQLite migration + two seed runs when schema changed
 - [ ] `php tools/pr-contract/tests/run.php`
 - [ ] `tools/pr-contract/check-current-pr.sh` passes
-

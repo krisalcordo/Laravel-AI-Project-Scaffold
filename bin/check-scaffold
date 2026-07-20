@@ -8,7 +8,17 @@ cd "$root"
 required=(
     AGENTS.md
     PRODUCT.md
+    DESIGN.md
     ARCHITECTURE.md
+    .agents/skills/impeccable/SKILL.md
+    .agents/skills/impeccable/reference/audit.md
+    .agents/skills/impeccable/reference/polish.md
+    .agents/skills/impeccable/scripts/load-context.mjs
+    bin/test-installer
+    template/AGENTS.md
+    template/PRODUCT.md
+    template/DESIGN.md
+    template/ARCHITECTURE.md
     template/.project-scaffold
     template/.github/pull_request_template.md
     template/.github/workflows/tests.yml
@@ -32,10 +42,14 @@ done
 
 bash -n bin/apply-scaffold
 bash -n bin/check-scaffold
+bash -n bin/test-installer
 find template/.ddev -type f \( -name '*.sh' -o -path '*/commands/*' \) -print0 \
     | xargs -0 -n1 bash -n
 
 php template/tools/pr-contract/tests/run.php
+node .agents/skills/impeccable/scripts/load-context.mjs >/dev/null
+IMPECCABLE_CONTEXT_DIR=template node .agents/skills/impeccable/scripts/load-context.mjs >/dev/null
+bin/test-installer
 
 if command -v rg >/dev/null 2>&1; then
     leak_output=$(rg --hidden -n 'formz|Ollivy|research-stores|demo@formz' . \

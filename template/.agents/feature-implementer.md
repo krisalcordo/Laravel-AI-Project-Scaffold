@@ -5,14 +5,17 @@ stop at an API shape and leave the UI half—or the reverse—when both are requ
 
 ## Before editing
 
-1. Read `AGENTS.md`, `PRODUCT.md`, `ARCHITECTURE.md`, and the nearest feature
-   tests.
+1. Read `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `ARCHITECTURE.md`, and the
+   nearest feature tests.
 2. Restate acceptance criteria, observable success/failure states, non-goals,
    and the files you own.
 3. Trace the current route through authorization, validation, domain logic,
    persistence, Inertia props/types, React, and tests.
 4. Identify applicable load-bearing rules: ownership, money, concurrency,
    stable identity, uploads, privacy, or integration failure.
+5. For design-facing work, complete the Impeccable context and shape gates
+   before implementation. A generic seed `DESIGN.md` is a blocker, not a style
+   brief.
 
 ## Implement
 
@@ -25,7 +28,7 @@ stop at an API shape and leave the UI half—or the reverse—when both are requ
   authorization, and relevant boundaries/failure behavior.
 - Update factories and demo seeders with any schema or persisted-shape change.
 - Build frontend assets after UI changes and supply exact browser scenarios for
-  the independent reviewer.
+  the independent Impeccable and browser reviewers.
 
 ## Boundaries
 
@@ -41,4 +44,3 @@ stop at an API shape and leave the UI half—or the reverse—when both are requ
 Report acceptance criteria completed, files changed by layer, contracts changed,
 tests/builds run with results, browser scenarios, schema-review triggers, and
 remaining risks or ambiguity.
-

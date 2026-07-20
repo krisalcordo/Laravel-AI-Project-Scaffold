@@ -1,8 +1,9 @@
 # Browser and PR evidence reviewer
 
 Run after implementation, test-gap review, schema/data review when applicable,
-and both complete database suites. This role independently validates the branch
-in a real browser and prepares the draft PR evidence.
+both complete database suites, and the independent Impeccable UI review. This
+role independently validates the branch in a real browser and prepares the
+draft PR evidence.
 
 ## Prepare the preview
 
@@ -15,7 +16,9 @@ ddev preview start WORKTREE --fresh
 
 Use the exact printed URL. Seed only safe local data. Read `PRODUCT.md`,
 `ARCHITECTURE.md`, `.project-scaffold`, the PR template, and
-`tools/pr-contract/config.php` before driving flows.
+`tools/pr-contract/config.php` before driving flows. Read the Impeccable review
+handoff and verify its claimed accessibility, responsive, and finish states in
+the real browser.
 
 ## Drive real behavior
 
@@ -43,12 +46,12 @@ automation, clipboard scripts, or a native file picker.
 
 Start from `.github/pull_request_template.md`. Include the exact preview URL,
 safe local test accounts, concrete browser outcomes, configured critical-flow
-statuses, console/network findings, behavior-to-test mappings, remaining gaps,
-inline screenshots, and the durable archive path.
+statuses, Impeccable context/audit/polish evidence, console/network findings,
+behavior-to-test mappings, remaining gaps, inline screenshots, and the durable
+archive path.
 
 Run `tools/pr-contract/check-current-pr.sh`. Keep the PR in draft until it is
 conflict-free and every required check passes. Never weaken the validator to
 make a feature branch pass.
 
 Leave the preview running for human review and report the exact stop command.
-

@@ -1,66 +1,59 @@
-# Architecture brief
-
-Keep this concise and current. It is the map agents and reviewers use before
-tracing code.
+# Architecture
 
 ## System context
 
-<!-- Describe the application, its users, and external systems in one paragraph. -->
+This repository is a source scaffold, not a Laravel runtime application. Its
+installer applies a versioned overlay to an existing Laravel repository. The
+target project then owns the copied instructions, local tooling, design context,
+and pull-request enforcement.
 
-## Application surfaces
+## Repository surfaces
 
-| Surface | Audience | Technology | Entry points | Boundary |
-| --- | --- | --- | --- | --- |
-| Customer application | | Inertia + React/TypeScript | | |
-| Public/guest experience | | Blade or Inertia | | |
-| Internal operations | Staff only | Filament (optional) | `/admin` | Never a customer workflow |
+| Surface | Owner | Purpose |
+| --- | --- | --- |
+| Root documentation | Scaffold maintainers | Explain the reusable stack and adoption model |
+| `template/` | Generated project | Files copied into a Laravel application |
+| `.agents/skills/impeccable/` | Scaffold and generated project | Vendored design workflow and references |
+| `bin/apply-scaffold` | Adopter | Conflict-safe installation and token replacement |
+| `bin/check-scaffold` | Scaffold CI | Structural, syntax, leakage, and validator checks |
+| `template/tools/pr-contract/` | Generated project CI | Enforce PR evidence against trusted base code |
 
-Delete unused rows and add real surfaces. Do not mix audiences without an
-explicit authorization and navigation decision.
-
-## Core request paths
-
-Document each load-bearing round trip in this form:
+## Installation path
 
 ```text
-route -> middleware/policy -> request validation -> service/domain action
-      -> database transaction -> response/Inertia props -> UI state
+existing Laravel repository
+  -> conflict inventory
+  -> copy generated-project template
+  -> copy vendored Impeccable skill
+  -> replace project identity tokens in installed files only
+  -> preserve existing application files unless --force was explicit
 ```
 
-## Data ownership and authorization
+The installer never creates a Laravel application or resolves application
+dependencies. The generated project owns its Composer and npm lockfiles.
 
-<!-- Which model owns each tenant-scoped resource? What is the expected 403/404
-     behavior? Which public identifiers are safe to expose? -->
+## Trust boundaries
 
-## Persisted contracts
+- `pull_request_target` executes only validator code and configuration from the
+  trusted base branch.
+- Pull-request head files are read for changed paths and exact test-method
+  mappings, but head code is never executed by the PR-contract workflow.
+- Screenshot archives come from the orphan `pr-assets` branch and must match the
+  PR body's declared branch folder.
+- `.project-scaffold` is committed configuration and must never contain secrets.
+- Preview databases are disposable clones. Upload storage is isolated unless a
+  project explicitly opts into sharing and documents the effect.
 
-<!-- Important columns, enums, JSON shapes, stable keys, and compatibility rules. -->
+## Extension points
 
-## Money, counters, and concurrency
+Generated projects customize `.project-scaffold`, `PRODUCT.md`, `DESIGN.md`,
+`ARCHITECTURE.md`, `tools/pr-contract/config.php`, critical flows, test users,
+and demo seeders. Generic behavior changes belong upstream in this repository;
+domain behavior stays in the application.
 
-<!-- Integer units, server authority, locking, idempotency, and boundary rules. -->
+## Verification
 
-## External integrations
-
-| Integration | Required or optional | Timeout/failure behavior | Retry/idempotency |
-| --- | --- | --- | --- |
-| | | | |
-
-## Files and uploads
-
-<!-- Disks, size/type rules, privacy, retention, and preview-environment effects. -->
-
-## Background work and schedules
-
-<!-- Queues, cron/scheduler requirements, retry limits, and operational visibility. -->
-
-## Testing strategy
-
-- SQLite in memory is the fast complete-suite default.
-- PostgreSQL 16 is the required production-parity complete suite.
-- Feature tests cover observable HTTP/domain behavior and authorization.
-- Browser validation covers JavaScript interaction, rendering, accessibility,
-  console errors, network failures, and the configured critical flows.
-
-Add project-specific test boundaries and name the highest-risk suites.
+`bin/check-scaffold` verifies required files, shell syntax, product-term
+leakage, and the PR validator's scenario suite. The installer is also exercised
+against a disposable Laravel-shaped target before releases.
 

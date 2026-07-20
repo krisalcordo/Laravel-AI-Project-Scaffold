@@ -12,6 +12,7 @@ Use this list once per generated project.
 ## Product and architecture
 
 - [ ] Complete every prompt in `PRODUCT.md`.
+- [ ] Run `$impeccable document` and replace the seed `DESIGN.md`.
 - [ ] Name all application surfaces and audiences in `ARCHITECTURE.md`.
 - [ ] Record tenant ownership and cross-account response behavior.
 - [ ] Record money, locking, stable-identity, and idempotency rules.
@@ -36,6 +37,7 @@ Use this list once per generated project.
 ## Pull-request contract
 
 - [ ] Tailor UI/runtime/frontend/migration path patterns.
+- [ ] Keep Impeccable context, audit, and polish checks enabled for UI changes.
 - [ ] Replace generic critical flows with the product's real round trip.
 - [ ] Confirm migration companion rules match factory/seeder organization.
 - [ ] Run the validator's own test harness.
@@ -48,4 +50,3 @@ Use this list once per generated project.
 - [ ] Search for `__PROJECT_` tokens and scaffold prompts.
 - [ ] Run both complete database suites and the frontend build.
 - [ ] Commit the baseline before feature work starts.
-

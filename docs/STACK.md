@@ -81,6 +81,17 @@ navigation, and accessibility bar.
 
 ## Quality system
 
+### Impeccable design workflow
+
+The complete Impeccable skill is vendored with the scaffold and copied into
+every project. It treats `PRODUCT.md` as strategic context and `DESIGN.md` as
+the normative visual system. UI work is shaped before implementation, then
+independently audited and polished before browser evidence is collected.
+
+The PR contract makes this review legible and mandatory for UI changes. This is
+not a visual theme: each project chooses its own register, palette, typography,
+layout, motion, component vocabulary, and anti-references.
+
 ### PHPUnit feature tests
 
 Prefer observable behavior through Laravel's HTTP and application boundaries.

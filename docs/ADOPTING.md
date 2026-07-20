@@ -74,13 +74,24 @@ Edit `tools/pr-contract/config.php`:
 - factory/seeder companions required for migrations; and
 - whether local test credentials are required.
 
+Keep the configured Impeccable checks enabled for UI paths. Specialize their
+labels only when the project adds a stricter equivalent review.
+
 Edit `.github/pull_request_template.md` so its critical-flow labels match that
 configuration. Replace the example test-account row with safe, locally seeded
 accounts. Never add production credentials.
 
 ## 5. Write product and architecture truth
 
-Complete `PRODUCT.md` and `ARCHITECTURE.md`. Pay particular attention to:
+Complete `PRODUCT.md`, `DESIGN.md`, and `ARCHITECTURE.md`. Start by loading the
+vendored Impeccable skill:
+
+```bash
+node .agents/skills/impeccable/scripts/load-context.mjs
+```
+
+Use `$impeccable teach` to confirm product context and `$impeccable document`
+to replace the generic design seed. Pay particular attention to:
 
 - user roles and tenant ownership;
 - integer-money and concurrency rules;
